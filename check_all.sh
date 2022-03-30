@@ -1,4 +1,7 @@
 #!/usr/bin/env zsh
+
+echo "Git Poll Check All v1.2"
+
 buildconfigs=$( oc get buildconfigs -A -l gitpoller.unstable.tech/type=basic -o json )
 
 jq ".items[]" -c <<< $buildconfigs | while read -r line; do;
