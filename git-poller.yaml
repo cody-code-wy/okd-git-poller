@@ -1,0 +1,130 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: unstable-tech-git-poll
+---
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: oc-tools
+  namespace: unstable-tech-git-poll
+spec:
+  lookupPolicy:
+    local: true
+---
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: oc-tools
+  namespace: unstable-tech-git-poll
+  labels:
+    app: oc-tools
+    gitpoller.unstable.tech/type: basic
+spec:
+  triggers:
+  - type: "ConfigChange"
+  source:
+    type: git
+    git:
+      uri: https://github.com/cody-code-wy/okd-tools-docker.git
+      ref: master
+  strategy:
+    type: Docker
+    dockerStrategy:
+      dockerfilePath: Containerfile
+  output:
+    to:
+      kind: ImageStreamTag
+      name: oc-tools:latest
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: git-poll-admin
+  namespace: unstable-tech-git-poll
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: git-poll-admin
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: admin
+subjects:
+- kind: ServiceAccount
+  name: git-poll-admin
+  namespace: unstable-tech-git-poll
+---
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: git-poll
+  namespace: unstable-tech-git-poll
+spec:
+  lookupPolicy:
+    local: true
+---
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: git-poll
+  namespace: unstable-tech-git-poll
+  labels:
+    app: git-poll
+    gitpoller.unstable.tech/type: basic
+spec:
+  triggers:
+  - type: "ConfigChange"
+  - type: "ImageChange"
+    imageChange: {}
+  source:
+    type: git
+    git:
+      uri: https://github.com/cody-code-wy/okd-git-poller.git
+      ref: master
+  strategy:
+    type: Docker
+    dockerStrategy:
+      dockerfilePath: Containerfile
+      from:
+        kind: "ImageStreamTag"
+        name: "oc-tools:latest"
+  output:
+    to:
+      kind: ImageStreamTag
+      name: git-poll:latest
+---
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: git-poll
+  namespace: unstable-tech-git-poll
+  annotations:
+    image.openshift.io/triggers: |-
+      [
+        {
+          "from": {
+            "kind": "ImageStreamTag",
+            "name": "git-poll:latest"
+          },
+          "fieldPath": "spec.jobTemplate.spec.template.spec.containers[0].image"
+        }
+      ]
+spec:
+  schedule: "*/1 * * * *"
+  concurrencyPolicy: "Forbid"
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            parent: "cronjob-git-poll"
+        spec:
+          serviceAccountName: git-poll-admin
+          containers:
+          - name: git-poll
+            image: git-poll:latest
+          restartPolicy: OnFailure

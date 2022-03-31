@@ -1,0 +1,50 @@
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: git-poller-test
+spec:
+  lookupPolicy:
+    local: true
+---
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: git-poller-test
+  labels:
+    app: git-poller-test
+    gitpoller.unstable.tech/type: basic
+spec:
+  source:
+    type: git
+    git:
+      uri: https://github.com/cody-code-wy/cicdtest.git
+  strategy:
+    type: Docker
+    dockerStrategy:
+      dockerfilePath: Containerfile
+  output:
+    to:
+      kind: ImageStreamTag
+      name: git-poller-test:latest
+---
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: git-poller-test-alt
+  labels:
+    app: git-poller-test-alt
+    gitpoller.unstable.tech/type: basic
+spec:
+  source:
+    type: git
+    git:
+      uri: https://github.com/cody-code-wy/cicdtest.git
+      ref: "cody-code-wy-patch-1"
+  strategy:
+    type: Docker
+    dockerStrategy:
+      dockerfilePath: Containerfile
+  output:
+    to:
+      kind: ImageStreamTag
+      name: git-poller-test:alt
