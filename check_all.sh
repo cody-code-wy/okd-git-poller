@@ -55,16 +55,13 @@ jq ".items[]" -c <<< $buildconfigs | while read -r line; do;
     "kubernetes.io/ssh-auth")
       keyfile=$(mktemp)
       jq -r ".data.\"ssh-privatekey\"" <<< $sourceSecret | base64 -d > $keyfile
-      cat $keyfile
       ;;
     *)
       echo "UNSUPPORTED buildConfig sourceSecret TYPE"
       ;;
   esac
-  echo $GIT_TOKEN
   echo "$name = $gituri:$gitref"
-  GIT_ASKPASS="$(pwd)/git_askpass.sh" GIT_SSH_COMMAND="ssh -i $keyfile -o IdentitiesOnly=yes" GIT_TOKEN="$GIT_TOKEN" git ls-remote -h "$gituri" "refs/heads/$gitref"
-  ref=$(GIT_ASKPASS=$(pwd)/git_askpass.sh GIT_SSH_COMMAND="ssh -i $keyfile -o IdentitiesOnly=yes" GIT_TOKEN="$GIT_TOKEN" git ls-remote -h "$gituri" "refs/heads/$gitref" | cut -f1)
+  ref=$(GIT_ASKPASS=$(pwd)/git_askpass.sh GIT_SSH_COMMAND="ssh -i $keyfile -o IdentitiesOnly=yes -o StrictHostKeyChecking=no" GIT_TOKEN="$GIT_TOKEN" git ls-remote -h "$gituri" "refs/heads/$gitref" | cut -f1)
   if [[ -v keyfile && -f $keyfile ]]; then
     rm -f $keyfile #cleanup
   fi
