@@ -44,7 +44,7 @@ jq ".items[]" -c <<< $buildconfigs | while read -r line; do;
   sourceSecretType=$(jq -r ".type" <<< $sourceSecret)
   case $sourceSecretType in
     "kubernetes.io/basic-auth")
-      GIT_TOKEN=$(jq -r '.data.password' <<< $sourceSecret | base64 -D)
+      GIT_TOKEN=$(jq -r '.data.password' <<< $sourceSecret | base64 -d)
       gitUsername=$(jq -r '.data.username' <<< $sourceSecret)
       if [[ "$gitUsername" != "" ]]; then
         IFS=":" read -r gitProtocol gitUriFragment <<< $gituri
@@ -54,7 +54,7 @@ jq ".items[]" -c <<< $buildconfigs | while read -r line; do;
       ;;
     "kubernetes.io/ssh-auth")
       keyfile=$(mktemp)
-      jq -r ".data.\"ssh-privatekey\"" <<< $sourceSecret | base64 -D > $keyfile
+      jq -r ".data.\"ssh-privatekey\"" <<< $sourceSecret | base64 -d > $keyfile
       ;;
     *)
       echo "UNSUPPORTED buildConfig sourceSecret TYPE"
